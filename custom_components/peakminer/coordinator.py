@@ -40,6 +40,13 @@ class PeakMinerCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=UPDATE_INTERVAL_SECONDS),
         )
 
+        # Whether the last /summary poll succeeded. False is not fatal: we keep
+        # returning the last-good data so entities never flip to "cannot
+        # connect". sensor.py uses this to flip the Online binary sensor and
+        # reset hashrate to zero.
+        self.online = False
+        self._last_good: dict = {}
+
         # Portainer-style "known set + callback" so per-GPU entities can be
         # added on a later refresh (not just once at setup, when the gpus list
         # may not have populated yet).
@@ -47,13 +54,20 @@ class PeakMinerCoordinator(DataUpdateCoordinator):
         self.new_gps_callbacks: list[Callable[..., None]] = []
 
     async def _async_update_data(self) -> dict:
+        # Fetch a 15s window of data; on error we log it but *don't raise*.
+        # Raising would flip every entity to "cannot connect" in HA. Instead we
+        # remember whether the last poll succeeded and return the last-good data
+        # so entities keep showing state (the Online sensor tells the truth).
         try:
             async with async_timeout.timeout(15):
                 resp = await self._session.get(self.url)
                 if resp.status != 200:
-                    raise UpdateFailed(
-                        f"PeakMiner returned status {resp.status}"
+                    _LOGGER.warning(
+                        "PeakMiner returned status %s from %s", resp.status, self.url
                     )
+                    self.online = False
+                    self._handle_failure()
+                    return dict(self._last_good or {})
 
                 data = await resp.json()
 
@@ -64,6 +78,11 @@ class PeakMinerCoordinator(DataUpdateCoordinator):
                 if not isinstance(gpus, list):
                     gpus = []
                 data["gpus"] = list(gpus)
+
+                # GPUs only count as "good" if we actually have some — a 200
+                # but empty list is still stale.
+                self.online = bool(data.get("version"))
+                self._last_good = data
 
                 # Detect GPUs we haven't seen yet and notify the sensor platform
                 # so it can add per-GPU entities/devices on this refresh instead
@@ -89,9 +108,17 @@ class PeakMinerCoordinator(DataUpdateCoordinator):
 
                 _LOGGER.debug("PeakMiner summary from %s", self.url)
                 return data
-        except UpdateFailed:
-            raise
-        except Exception as err:
-            raise UpdateFailed(
-                f"Error fetching PeakMiner summary from {self.url}: {err}"
-            ) from err
+        except UpdateFailed as err:
+            # Non-200 already handled above; anything here is a real fetch
+            # error (timeout, DNS, connection reset). Keep the good data coming.
+            _LOGGER.warning("PeakMiner fetch failed: %s", err)
+            self.online = False
+            r = dict(self._last_good or {})
+            r["gpus"] = list(r.get("gpus", []))
+            return r
+        except Exception as err:  # noqa: BLE001 - we intentionally never surface HA errors
+            _LOGGER.warning("PeakMiner unexpected error: %s", err)
+            self.online = False
+            r = dict(self._last_good or {})
+            r["gpus"] = list(r.get("gpus", []))
+            return r

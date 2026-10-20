@@ -10,8 +10,9 @@ from .coordinator import PeakMinerCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 # The main "combined stats" sensor + all per-GPU sensors are sensor entities,
-# which is what the config flow / manifest reports.
-PLATFORMS = [Platform.SENSOR]
+# and the Online binary sensor lives on the main device too. Both platforms are
+# what the config flow / manifest report.
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 
 async def async_setup_entry(
