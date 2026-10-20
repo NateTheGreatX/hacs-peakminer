@@ -5,7 +5,7 @@ A [Home Assistant](https://www.home-assistant.io) integration for
 `xmrig`/AMD-miner controller. It polls the miner's HTTP `/summary` endpoint and
 exposes the rig's stats as Home Assistant sensors.
 
-![version: 0.1.3](https://img.shields.io/badge/version-0.1.3-brightgreen)
+![version: 0.1.4](https://img.shields.io/badge/version-0.1.4-brightgreen)
 ![iot_class: local_polling](https://img.shields.io/badge/iot_class-local--polling-blue)
 
 ## Features
