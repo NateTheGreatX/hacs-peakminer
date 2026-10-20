@@ -1,0 +1,12 @@
+{
+  "domain": "peakminer",
+  "name": "PeakMiner",
+  "codeowners": ["@NateTheGreatX"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/NateTheGreatX/hacs-peakminer",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/NateTheGreatX/hacs-peakminer/issues",
+  "requirements": [],
+  "version": "0.1.3"
+}
