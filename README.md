@@ -1,7 +1,7 @@
 # PeakMiner Home Assistant Integration
 
 A [Home Assistant](https://www.home-assistant.io) integration for
-[PeakMiner](https://github.com/nrees-agreserves/peakminer) — a distributed
+[PeakMiner](https://github.com/peakminer/peakminer) — a distributed
 `xmrig`/AMD-miner controller. It polls the miner's HTTP `/summary` endpoint and
 exposes the rig's stats as Home Assistant sensors.
 
