@@ -5,7 +5,7 @@ A [Home Assistant](https://www.home-assistant.io) integration for
 `xmrig`/AMD-miner controller. It polls the miner's HTTP `/summary` endpoint and
 exposes the rig's stats as Home Assistant sensors.
 
-![version: 0.1.3](https://img.shields.io/badge/version-0.1.3-brightgreen)
+![version: 0.2.0](https://img.shields.io/badge/version-0.2.0-brightgreen)
 ![iot_class: local_polling](https://img.shields.io/badge/iot_class-local--polling-blue)
 
 ## Features
@@ -22,11 +22,27 @@ exposes the rig's stats as Home Assistant sensors.
   scaled to **TH/s** / **TH/W** for readability.
 - **Pool connection boolean** — `Pool Connected` doubles as a `on/off` sensor for
   automations.
+- **GPU power % control** — per-GPU **wattage limit as a percentage of the card's
+  own default** (e.g. `80%`), applied in place through the miner's OC control API.
+  Manage power in percent — no max/min wattage arithmetic, no restart.
 
 ## Requirements
 
 - Home Assistant Core **≥ 2025.3.0**
 - A running PeakMiner instance serving `GET /summary` over HTTP.
+
+### Controls / API
+
+Control entities (pause switch, pool select, GPU power %, OC reset, flight-sheet
+button) require PeakMiner **≥ 2.20.0** with an API key configured via
+`--api-key` / `PEAK_API_KEY` and control levels enabled via `--api-control`
+(`pause,pool,config,oc` or `all`). See the
+[PeakMiner HTTP API](https://github.com/peakminer/peakminer/blob/main/API.md) for
+the full control-endpoint reference (`/control/pause`, `/control/resume`,
+`/control/pool`, `/control/oc`, `/control/state`, `/config`, `/config/overlay`).
+
+Older miners get stats only — no control entities are created for them when the
+version is below the control-API minimum.
 
 ## Installation
 
@@ -54,8 +70,26 @@ The config flow is fully UI-driven. You supply:
 |--------------|--------------------------------------|---------|
 | **Host**     | Hostname/IP of the PeakMiner API     | —       |
 | **Port**     | Port of the `/summary` endpoint      | `4068`  |
+| **API Key**  | API key for the miner's control API  | unset*  |
 
-No authentication is required — PeakMiner's API is an unauthenticated HTTP GET.
+\* Empty / unset means the miner is running its older **open (unauthenticated)**
+API, so stats work without a key and control endpoints are unavailable.
+
+No authentication is required when no key is set — PeakMiner's API is an
+unauthenticated HTTP GET by default.
+
+### Changing / adding the API key later: **Reconfigure**
+
+If you added the integration before you had an API key (or you want to point it
+at a different miner / port), use **Reconfigure** on the existing entry:
+
+**Settings → Devices & Services → PeakMiner → ⋮ (three dots) → Reconfigure**
+
+The reconfigure form shows the current host / port / API key and lets you change
+any of them. After submitting it validates the new settings against the miner and
+then reloads the entry — the new API key (or host / port) is picked up without you
+having to delete and re-add the integration. Clearing the API key field switches
+back to the open (unauthenticated) API.
 
 ## Entities
 
@@ -99,7 +133,7 @@ No authentication is required — PeakMiner's API is an unauthenticated HTTP GET
 
 ## Development / Troubleshooting
 
-- Data is polled every **30 seconds** (`UPDATE_INTERVAL_SECONDS` in `const.py`).
+- Data is polled every **5 seconds** (`UPDATE_INTERVAL_SECONDS` in `const.py`).
 - Logs can be found by searching for `peakminer` in the HA logs.
 - If per-GPU devices don't appear, **Unload & Delete** the entry and
   **Add** it again — that rebuilds the full device/entity set cleanly.

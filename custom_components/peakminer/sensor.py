@@ -50,7 +50,7 @@ _COMBINED_FIELDS = (
     ("effort_pct", "Effort", SensorStateClass.MEASUREMENT, "%", "mdi:hammer-wrench", None, 1.0),
     ("pool_url", "Pool URL", None, None, "mdi:server-network", "pool.url", 1.0),
     ("pool_ping_ms", "Pool Ping", SensorStateClass.MEASUREMENT, "ms", "mdi:network-latency", "pool.ping_ms", 1.0),
-    ("pool_difficulty", "Pool Difficulty", SensorStateClass.MEASUREMENT, None, "mdi:chart-candlestick", "pool.difficulty", 1.0),
+    ("pool_difficulty", "Pool Difficulty", SensorStateClass.MEASUREMENT, "TH", "mdi:chart-candlestick", "pool.difficulty", TH_DIVISOR),
     ("pool_connected", "Pool Connected", None, None, "mdi:connection", "pool.connected", 1.0),
 )
 
@@ -162,6 +162,10 @@ class _BasePeakMinerSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data
         if data is None:
             return None
+        # Hashrate / Hashrate/Watt can't be trusted while the connection is
+        # down, so report 0 instead of a stale figure.
+        if not self.coordinator.online and "hashrate" in self._attr_data_key:
+            return 0
         if self._gpu_id is not None:
             raw = self._get_raw()
             if raw is None:
